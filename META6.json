@@ -3,7 +3,7 @@
   "description": "CommonMark bindings for Raku: parse Markdown with the reference C library (libcmark) and render to HTML, XML, man, LaTeX or CommonMark, with full AST access.",
   "version": "0.2.0",
   "api": "1",
-  "auth": "zef:khalidelboray",
+  "auth": "zef:khalidelborai",
   "perl": "6.d",
   "tags": ["markdown", "commonmark", "html", "xml", "latex", "man", "nativecall", "parser"],
   "authors": [
