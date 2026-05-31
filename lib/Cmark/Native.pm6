@@ -1,18 +1,31 @@
 use NativeCall;
 unit module Cmark::Native;
 
-#| libc free(3). cmark's default memory allocator hands back malloc'd buffers
-#| (the rendered strings) that the caller is responsible for releasing.
-sub free(Pointer) is native { * }
+#| cmark's memory allocator struct (calloc / realloc / free function pointers).
+#| cmark's renderers allocate their result buffers with this allocator, so its
+#| `free` is the correct, portable way to release them. Binding libc free does
+#| not work cross-platform: the symbol is not locatable on Windows, and freeing
+#| a cmark-allocated buffer with a different C runtime's heap is undefined there.
+class CmarkMem is repr('CStruct') is export {
+    has Pointer $.calloc;
+    has Pointer $.realloc;
+    has Pointer $.free;
+}
+
+#| Returns cmark's default memory allocator.
+#| | `cmark_mem *cmark_get_default_mem_allocator(void)`
+sub cmark_get_default_mem_allocator(--> CmarkMem) is native('cmark') is export { * }
 
 #| Decode a NUL-terminated UTF-8 C string produced by a cmark renderer into a
-#| Raku Str, then free the underlying buffer. The nativecast copies the bytes,
-#| so the Str fully owns its data before the buffer is released. Returns '' for
-#| a NULL pointer (cmark yields NULL on render failure).
+#| Raku Str, then free the underlying buffer with cmark's own allocator. The
+#| nativecast copies the bytes, so the Str fully owns its data before the buffer
+#| is released. Returns '' for a NULL pointer (cmark yields NULL on failure).
+my &cmark-free;
 sub cstr-to-str-free(Pointer[uint8] $p --> Str) is export {
     return '' unless $p.defined;
     my $str = nativecast(Str, $p);
-    free($p);
+    &cmark-free //= nativecast(:(Pointer), cmark_get_default_mem_allocator().free);
+    cmark-free(nativecast(Pointer, $p));
     $str;
 }
 
