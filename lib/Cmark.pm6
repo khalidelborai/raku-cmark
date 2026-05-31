@@ -18,18 +18,19 @@ enum OPTIONS is export (
 );
 
 
-multi method parse(::CLASS:U: Str $md,$options = CMARK_OPT_DEFAULT) returns Cmark {
+multi method parse(Cmark:U: Str $md, $options = CMARK_OPT_DEFAULT) returns Cmark {
     my $node = cmark_parse_document($md, $md.encode('utf-8').bytes, $options);
     return self.bless(:$node,:$options);
 }
 
-multi method parse(::CLASS:U: IO $md,$options = CMARK_OPT_DEFAULT) returns Cmark {
-    samewith($md.slurp,$options);
+multi method parse(Cmark:U: IO $md, $options = CMARK_OPT_DEFAULT) returns Cmark {
+    samewith($md.slurp, $options);
 }
 
-multi method parse(::CLASS:D: $md , $options = CMARK_OPT_DEFAULT) {
-    my $node = cmark_parse_document($md, $md.encode('utf-8').bytes, $options);
-    self.node = $node;
+multi method parse(Cmark:D: $md, $options = CMARK_OPT_DEFAULT) {
+    $!node = cmark_parse_document($md, $md.encode('utf-8').bytes, $options);
+    $!options = $options;
+    self;
 }
 
 method to-html($options = $!options) {
