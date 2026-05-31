@@ -1,28 +1,37 @@
 # Cmark
 
-[![Build Status](https://travis-ci.com/khalidelboray/raku-cmark.svg?branch=master)](https://travis-ci.com/khalidelboray/raku-cmark)
+[![test](https://github.com/khalidelborai/raku-cmark/actions/workflows/test.yml/badge.svg)](https://github.com/khalidelborai/raku-cmark/actions/workflows/test.yml)
 
 ### DESCRIPTION
 
-A Raku binding (*NOT COMPLETED*) to the C lib [cmark](https://github.com/commonmark/cmark) *trying*
+Raku bindings to [cmark](https://github.com/commonmark/cmark), the CommonMark reference parser/renderer C library. Parse Markdown and render it to HTML, XML, man, LaTeX, or normalized CommonMark; walk the document AST; or stream input through an incremental parser.
 
-### INSTALL 
+This binds **stock cmark**: it follows the [CommonMark spec](https://commonmark.org) exactly, but does *not* include the GitHub-Flavored Markdown extensions (tables, strikethrough, task lists, autolinks, footnotes) — those live in the separate cmark-gfm library.
 
-* install cmark lib
-    * linux
-        - git clone https://github.com/commonmark/cmark.git
-        - cd cmark && make && make test && make install
-    * windows 
-        - i recommend using [`vcpkg`](https://github.com/microsoft/vcpkg)
-        - `vcpkg install cmark`
-        - add the bin dir in the vcpkg packages dir to your ENV PATH. will look like that `whatever\vcpkg\packages\cmark_x64-windows\bin`
-* install the module
-    * zef 
-        - `zef install Cmark`
-    * from source
-        - `git clone https://github.com/khalidelboray/raku-cmark.git`
-        - `cd cmark`
-        - `zef install .`
+### INSTALL
+
+**1. Install the cmark C library.** NativeCall loads it under the bare name `cmark`.
+
+* **Linux** — `sudo apt-get install libcmark-dev` (Debian/Ubuntu) or `sudo dnf install cmark-devel` (Fedora). The `-dev`/`-devel` package ships the unversioned `libcmark.so` that NativeCall needs. (Or build from source: `git clone https://github.com/commonmark/cmark && cd cmark && make && make install`.)
+* **macOS** — `brew install cmark`. On Apple-Silicon Homebrew this lands in `/opt/homebrew/lib`, which is **not** on NativeCall's default search path, so make it discoverable with a one-time symlink:
+  ```sh
+  sudo ln -sf "$(brew --prefix cmark)/lib/libcmark.dylib" /usr/local/lib/libcmark.dylib
+  ```
+* **Windows** — install [`vcpkg`](https://github.com/microsoft/vcpkg), run `vcpkg install cmark`, and add the package `bin` directory (e.g. `…\vcpkg\packages\cmark_x64-windows\bin`) to your `PATH`.
+
+**2. Install the module.**
+
+```sh
+zef install Cmark
+```
+
+Or from a checkout:
+
+```sh
+git clone https://github.com/khalidelborai/raku-cmark.git
+cd raku-cmark
+zef install .
+```
         
 
 # Example
@@ -32,6 +41,40 @@ A Raku binding (*NOT COMPLETED*) to the C lib [cmark](https://github.com/commonm
     my $options = CMARK_OPT_UNSAFE +| CMARK_OPT_SOURCEPOS  ;
     my $doc = Cmark.parse("# Header [hello](javascript:alert(1))",$options);
     say $doc.to-html();  # <h1 data-sourcepos="1:1-1:37">Header <a href="javascript:alert(1)">hello</a></h1>
+```
+
+## More examples
+
+One-shot Markdown → HTML, without keeping a reusable document:
+
+``` raku
+use Cmark;
+say Cmark.markdown-to-html("# Hello *world*").chomp;   # <h1>Hello <em>world</em></h1>
+```
+
+Walk the document tree (visits every node once, on entry):
+
+``` raku
+use Cmark;
+my $doc = Cmark.parse("# Title\n\n- one\n- two\n");
+$doc.walk(-> $node {
+    say $node.type;                                    # a typed NodeType, e.g. CMARK_NODE_HEADING
+    say "  text: {$node.text}" if $node.type == CMARK_NODE_TEXT;
+});
+```
+
+Node/list/event kinds are exposed as typed enums (`NodeType`, `ListType`, `DelimType`, `EventType`), and nodes answer `is-block` / `is-inline` / `is-leaf`. Rendering a document before parsing (e.g. `Cmark.new.to-html`) throws a catchable `X::Cmark::NoNode` instead of crashing.
+
+Stream input through an incremental parser (lower-level `Cmark::Native` API):
+
+``` raku
+use Cmark::Native;
+my $parser = Parser.new(0);
+$parser.feed("# Streamed\n\n");
+$parser.feed("body text\n");
+my $node = $parser.finish;                  # the caller owns the returned tree
+say cstr-to-str-free(cmark_render_html($node, 0)).chomp;
+cmark_node_free($node);                     # free it when done
 ```
 
 ## Class `Cmark` Methods
@@ -141,7 +184,7 @@ A Raku binding (*NOT COMPLETED*) to the C lib [cmark](https://github.com/commonm
     Converts the parsed Markdown to latex given the options (defaults to the options used with parse)  and width
 
 
-## TODO 
-* Add more tests
-* Full binding 
-* Docs
+## TODO
+* Surface the remaining node accessors as methods (`heading-level`, `fence-info`, source position)
+* A GitHub-Flavored Markdown sibling binding (`cmark-gfm`)
+* More documentation
