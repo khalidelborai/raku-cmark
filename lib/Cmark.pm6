@@ -1,4 +1,10 @@
 use Cmark::Native;
+
+# Re-export Cmark::Native's exports (node/list/delim/event enums, the Node/Parser/
+# CIterator classes, X::Cmark::NoNode, and the raw cmark_* subs) so that a plain
+# `use Cmark` gives consumers the typed enums and helpers, not just the OO class.
+sub EXPORT { Map.new( Cmark::Native::EXPORT::DEFAULT::.pairs ) }
+
 #| Main Class
 unit class Cmark;
 

@@ -27,6 +27,52 @@ class X::Cmark::NoNode is Exception is export {
     }
 }
 
+#| Node, list, list-delimiter, and traversal-event type enums. Values match the C
+#| `cmark_node_type` / `cmark_list_type` / `cmark_delim_type` / `cmark_event_type`
+#| enums in cmark.h (verified against 0.31.2).
+enum NodeType is export (
+    CMARK_NODE_NONE           => 0,
+    CMARK_NODE_DOCUMENT       => 1,
+    CMARK_NODE_BLOCK_QUOTE    => 2,
+    CMARK_NODE_LIST           => 3,
+    CMARK_NODE_ITEM           => 4,
+    CMARK_NODE_CODE_BLOCK     => 5,
+    CMARK_NODE_HTML_BLOCK     => 6,
+    CMARK_NODE_CUSTOM_BLOCK   => 7,
+    CMARK_NODE_PARAGRAPH      => 8,
+    CMARK_NODE_HEADING        => 9,
+    CMARK_NODE_THEMATIC_BREAK => 10,
+    CMARK_NODE_TEXT           => 11,
+    CMARK_NODE_SOFTBREAK      => 12,
+    CMARK_NODE_LINEBREAK      => 13,
+    CMARK_NODE_CODE           => 14,
+    CMARK_NODE_HTML_INLINE    => 15,
+    CMARK_NODE_CUSTOM_INLINE  => 16,
+    CMARK_NODE_EMPH           => 17,
+    CMARK_NODE_STRONG         => 18,
+    CMARK_NODE_LINK           => 19,
+    CMARK_NODE_IMAGE          => 20,
+);
+
+enum ListType is export (
+    CMARK_NO_LIST      => 0,
+    CMARK_BULLET_LIST  => 1,
+    CMARK_ORDERED_LIST => 2,
+);
+
+enum DelimType is export (
+    CMARK_NO_DELIM     => 0,
+    CMARK_PERIOD_DELIM => 1,
+    CMARK_PAREN_DELIM  => 2,
+);
+
+enum EventType is export (
+    CMARK_EVENT_NONE  => 0,
+    CMARK_EVENT_DONE  => 1,
+    CMARK_EVENT_ENTER => 2,
+    CMARK_EVENT_EXIT  => 3,
+);
+
 class Node is repr('CPointer') {
 
     multi method text {
@@ -36,14 +82,33 @@ class Node is repr('CPointer') {
     multi method text($text) {
         cmark_node_set_literal(self,$text);
     }
-    multi method type(:$str){
+    multi method type(:$str!){
+        die X::Cmark::NoNode.new without self;
         cmark_node_get_type_string(self);
     }
     multi method type {
-        cmark_node_get_type(self);
+        die X::Cmark::NoNode.new without self;
+        NodeType(cmark_node_get_type(self));
     }
     method list-type {
-        return cmark_node_get_list_type(self)
+        die X::Cmark::NoNode.new without self;
+        ListType(cmark_node_get_list_type(self));
+    }
+    method list-delim {
+        die X::Cmark::NoNode.new without self;
+        DelimType(cmark_node_get_list_delim(self));
+    }
+    method is-block {
+        die X::Cmark::NoNode.new without self;
+        cmark_node_is_block(self);
+    }
+    method is-inline {
+        die X::Cmark::NoNode.new without self;
+        cmark_node_is_inline(self);
+    }
+    method is-leaf {
+        die X::Cmark::NoNode.new without self;
+        cmark_node_is_leaf(self);
     }
 
     method next {
@@ -217,6 +282,18 @@ sub cmark_node_get_type(  Node ) returns int32 is native('cmark') is export { * 
 #| Like `cmark_node_get_type`, but returns a string representation of the type, or "<unknown>".
 #| | `const char * cmark_node_get_type_string(cmark_node *node)`
 sub cmark_node_get_type_string(  Node ) returns Str is encoded('utf8') is native('cmark') is export { * }
+
+#| Returns 1 if the node is a block-level element, 0 otherwise.
+#| | `bool cmark_node_is_block(cmark_node *node)`
+sub cmark_node_is_block( Node ) returns bool is native('cmark') is export { * }
+
+#| Returns 1 if the node is an inline element, 0 otherwise.
+#| | `bool cmark_node_is_inline(cmark_node *node)`
+sub cmark_node_is_inline( Node ) returns bool is native('cmark') is export { * }
+
+#| Returns 1 if the node is a leaf (cannot contain children), 0 otherwise.
+#| | `bool cmark_node_is_leaf(cmark_node *node)`
+sub cmark_node_is_leaf( Node ) returns bool is native('cmark') is export { * }
 
 #| Returns the string contents of 'node', or an empty string if none is set. Returns NULL if called on a node that does not have string content.
 #| | `const char * cmark_node_get_literal(cmark_node *node)`
