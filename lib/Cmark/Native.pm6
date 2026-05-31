@@ -17,6 +17,16 @@ sub cstr-to-str-free(Pointer[uint8] $p --> Str) is export {
 }
 
 #________________________________________________Classes__________________________________________________________#
+
+#| Thrown when an operation is attempted on an undefined node — e.g. rendering a
+#| Cmark before calling .parse, or following a traversal link past the end of the
+#| tree. Catchable, unlike the SIGSEGV an unchecked NULL node would cause in C.
+class X::Cmark::NoNode is Exception is export {
+    method message(--> Str) {
+        "Cmark: operation attempted on an undefined node — parse a document first"
+    }
+}
+
 class Node is repr('CPointer') {
 
     multi method text {
@@ -52,18 +62,23 @@ class Node is repr('CPointer') {
         return cmark_node_last_child( self );
     }
     multi method render($options = 0,:$html!) {
+        die X::Cmark::NoNode.new without self;
         cstr-to-str-free(cmark_render_html(self,$options));
     }
     multi method render($options = 0,:$xml!) {
+        die X::Cmark::NoNode.new without self;
         cstr-to-str-free(cmark_render_xml(self,$options));
     }
     multi method render($options = 0 ,$width = 0,:$latex!) {
+        die X::Cmark::NoNode.new without self;
         cstr-to-str-free(cmark_render_latex(self,$options,$width));
     }
     multi method render($options = 0 ,$width = 0,:$commonmark!) {
+        die X::Cmark::NoNode.new without self;
         cstr-to-str-free(cmark_render_commonmark(self,$options,$width));
     }
     multi method render($options = 0 ,$width = 0,:$man!) {
+        die X::Cmark::NoNode.new without self;
         cstr-to-str-free(cmark_render_man(self,$options,$width));
     }
 }

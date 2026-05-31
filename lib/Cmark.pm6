@@ -35,22 +35,27 @@ multi method parse(Cmark:D: $md, $options = CMARK_OPT_DEFAULT) {
 }
 
 method to-html($options = $!options) {
+    die X::Cmark::NoNode.new without $!node;
     cstr-to-str-free(cmark_render_html($!node,$options));
 }
 
 method to-xml($options = $!options) {
+    die X::Cmark::NoNode.new without $!node;
     cstr-to-str-free(cmark_render_xml($!node,$options));
 }
 
 method to-man($options = $!options , :$width = 0) {
+    die X::Cmark::NoNode.new without $!node;
     cstr-to-str-free(cmark_render_man($!node,$options,$width));
 }
 
 method to-commonmark($options = $!options,:$width = 0) {
+    die X::Cmark::NoNode.new without $!node;
     cstr-to-str-free(cmark_render_commonmark($!node,$options,$width));
 }
 
 method to-latex($options = $!options,:$width =  0) {
+    die X::Cmark::NoNode.new without $!node;
     cstr-to-str-free(cmark_render_latex($!node,$options,$width));
 }
 
