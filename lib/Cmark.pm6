@@ -69,6 +69,20 @@ method version {
     cmark_version_string;
 }
 
+#| Walk the document tree depth-first, calling &block with each node once (on its
+#| ENTER event, so every node is visited exactly once). Yielded nodes are borrowed
+#| — do not free them; they belong to this Cmark's tree. The iterator is released
+#| when it goes out of scope.
+method walk(&block) {
+    die X::Cmark::NoNode.new without $!node;
+    my $iter = cmark_iter_new($!node);
+    loop {
+        my $ev = $iter.next;
+        last if $ev == CMARK_EVENT_DONE;
+        block($iter.node) if $ev == CMARK_EVENT_ENTER;
+    }
+}
+
 #| Release the document tree this object owns. cmark_node_free frees the root
 #| node and all of its children, so borrowed child Node objects obtained via
 #| traversal must not outlive their owning Cmark.

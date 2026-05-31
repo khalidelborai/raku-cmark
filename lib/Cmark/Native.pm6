@@ -177,62 +177,53 @@ class Parser is repr('CPointer') {
 }
 
 
-#
-#enum EventType <CMARK_EVENT_NONE CMARK_EVENT_DONE CMARK_EVENT_ENTER CMARK_EVENT_EXIT>;
-#class CIterator is repr('CPointer')    {
-#
-#    submethod BUILD(:$node) {
-#        cmark_iter_new($node);
-#    }
-#
-#    multi method new($node) {
-#        self.bless(:$node);
-#    }
-#
-#    submethod DESTROY {
-#        cmark_iter_free( self )
-#    }
-#
-#    method next {
-#        return cmark_iter_next( self );
-#    }
-#
-#    method node {
-#        return cmark_iter_get_node( self );
-#    }
-#
-#    method event-type {
-#        return cmark_iter_get_event_type( self );
-#    }
-#
-#    method root {
-#        return cmark_iter_get_root( self );
-#    }
-#}
+#| Wraps a `cmark_iter`. Construct it from cmark_iter_new(root) — a CPointer
+#| cannot be built with .new/bless, the pointer must come from the native call.
+#| The iterator borrows the tree (owns nothing in it), so DESTROY frees only the
+#| iterator itself, never the nodes it yields.
+class CIterator is repr('CPointer') is export {
+    #| Advance to the next node; returns an EventType (ENTER / EXIT / DONE).
+    method next       { EventType(cmark_iter_next(self)) }
+    #| The node at the current position.
+    method node       { cmark_iter_get_node(self) }
+    #| The event type at the current position.
+    method event-type { EventType(cmark_iter_get_event_type(self)) }
+    #| The root node the iterator was created from.
+    method root       { cmark_iter_get_root(self) }
+    #| Reset the iterator to resume at a given node and event.
+    method reset(Node $current, EventType $event-type) {
+        cmark_iter_reset(self, $current, $event-type.Int);
+    }
+    submethod DESTROY { cmark_iter_free(self) }
+}
 #________________________________________________Iterator__________________________________________________________#
 #| Creates a new iterator starting at 'root'. The current node and event type are undefined until 'cmark_iter_next' is called for the first time. The memory allocated for the iterator should be released using 'cmark_iter_free' when it is no longer needed.
 #| | `cmark_iter * cmark_iter_new(cmark_node *root)`
-#sub cmark_iter_new( Node ) returns Pointer is native('cmark') is export { * }
+sub cmark_iter_new( Node ) returns CIterator is native('cmark') is export { * }
 
 #| Frees the memory allocated for an iterator.
 #| | `void cmark_iter_free(cmark_iter *iter)`
-#sub cmark_iter_free( CIterator) is native('cmark') is export { * }
+sub cmark_iter_free( CIterator ) is native('cmark') is export { * }
 
 #| Advances to the next node and returns the event type (`CMARK_EVENT_ENTER`, `CMARK_EVENT_EXIT` or `CMARK_EVENT_DONE`).
 #| | `cmark_event_type cmark_iter_next(cmark_iter *iter)`
-#sub cmark_iter_next( CIterator) returns int32 is native('cmark') is export { * }
+sub cmark_iter_next( CIterator ) returns int32 is native('cmark') is export { * }
 
 #| Returns the current node.
 #| | `cmark_node * cmark_iter_get_node(cmark_iter *iter)`
-#sub cmark_iter_get_node( CIterator ) returns Node is native('cmark') is export { * }
+sub cmark_iter_get_node( CIterator ) returns Node is native('cmark') is export { * }
 
 #| Returns the current event type.
 #| | `cmark_event_type cmark_iter_get_event_type(cmark_iter *iter)`
-#sub cmark_iter_get_event_type( CIterator )  returns int32 is native('cmark') is export { * }
+sub cmark_iter_get_event_type( CIterator ) returns int32 is native('cmark') is export { * }
 
 #| Returns the root node.
 #| | `cmark_node * cmark_iter_get_root(cmark_iter *iter)`
-#sub cmark_iter_get_root( CIterator )  returns Node is native('cmark') is export { * }
+sub cmark_iter_get_root( CIterator ) returns Node is native('cmark') is export { * }
+
+#| Resets the iterator so the next cmark_iter_next reports 'current' with 'event_type'.
+#| | `void cmark_iter_reset(cmark_iter *iter, cmark_node *current, cmark_event_type event_type)`
+sub cmark_iter_reset( CIterator, Node, int32 ) is native('cmark') is export { * }
 #________________________________________________Creating-and-Destroying-Nodes__________________________________________________________#
 
 #| Creates a new node of type 'type'. Note that the node may have other required properties, which it is the caller's responsibility to assign.
