@@ -345,7 +345,7 @@ sub cmark_parser_feed( Parser, Str is encoded('utf8'), size_t ) is native('cmark
 sub cmark_parser_finish( Parser ) returns Node is native('cmark') is export { * }
 
 
-sub cmark_parse_document(Str ,size_t,int32) returns Node is native('cmark') is export { * }
+sub cmark_parse_document(Str is encoded('utf8'), size_t, int32) returns Node is native('cmark') is export { * }
 #________________________________________________Tree-Manipulation__________________________________________________________#
 
 #| Unlinks a 'node', removing it from the tree, but not freeing its memory. (Use 'cmark_node_free' for that.)
