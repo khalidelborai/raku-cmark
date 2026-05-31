@@ -1,13 +1,14 @@
 {
   "name": "Cmark",
-  "description": "A Raku binding to the C lib cmark",
-  "version": "0.1",
-  "perl": "6.*",
-  "tags":["markdown","xml","latex","commonmark","man"],
+  "description": "CommonMark bindings for Raku: parse Markdown with the reference C library (libcmark) and render to HTML, XML, man, LaTeX or CommonMark, with full AST access.",
+  "version": "0.2.0",
+  "api": "1",
+  "auth": "zef:khalidelboray",
+  "perl": "6.d",
+  "tags": ["markdown", "commonmark", "html", "xml", "latex", "man", "nativecall", "parser"],
   "authors": [
     "Khalid Elboray"
   ],
-  "auth": "github:khalidelboray",
   "depends": [],
   "build-depends": [],
   "test-depends": [],
@@ -17,5 +18,5 @@
   },
   "resources": [],
   "license": "Artistic-2.0",
-  "source-url": "https://github.com/khalidelboray/raku-cmark.git"
+  "source-url": "https://github.com/khalidelborai/raku-cmark.git"
 }

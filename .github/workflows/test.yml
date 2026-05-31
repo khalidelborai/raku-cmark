@@ -1,0 +1,57 @@
+name: test
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: Raku/setup-raku@v1
+
+      # libcmark must be discoverable by NativeCall as the bare name `cmark`.
+      - name: Install libcmark (Linux)
+        if: runner.os == 'Linux'
+        # libcmark-dev ships the unversioned /usr/lib/.../libcmark.so so
+        # `is native('cmark')` resolves without any version juggling.
+        run: sudo apt-get update && sudo apt-get install -y libcmark-dev
+
+      - name: Install libcmark (macOS)
+        if: runner.os == 'macOS'
+        # Homebrew on the ARM runners installs into /opt/homebrew/lib, which is
+        # not on NativeCall's default dlopen search path; symlink the dylib into
+        # /usr/local/lib (which is searched) so the bare name resolves.
+        run: |
+          brew install cmark
+          sudo mkdir -p /usr/local/lib
+          sudo ln -sf "$(brew --prefix cmark)/lib/libcmark.dylib" /usr/local/lib/libcmark.dylib
+
+      - name: Sanity check (libcmark loads)
+        run: raku -e 'use NativeCall; sub cmark_version_string(--> Str) is native("cmark") {*}; say "libcmark " ~ cmark_version_string;'
+
+      - name: Test
+        run: zef --debug test .
+
+  # Windows uses vcpkg; NativeCall discovery there is unverified, so this job is
+  # allowed to fail without failing the build. Promote it into the matrix above
+  # once a green run confirms the cmark.dll is found.
+  test-windows:
+    runs-on: windows-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Raku/setup-raku@v1
+      - name: Install libcmark (vcpkg)
+        run: vcpkg install cmark
+      - name: Put cmark on PATH
+        shell: pwsh
+        run: echo "$env:VCPKG_INSTALLATION_ROOT\packages\cmark_x64-windows\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+      - name: Test
+        run: zef --debug test .
