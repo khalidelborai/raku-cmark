@@ -1,7 +1,20 @@
 use NativeCall;
 unit module Cmark::Native;
 
+#| libc free(3). cmark's default memory allocator hands back malloc'd buffers
+#| (the rendered strings) that the caller is responsible for releasing.
+sub free(Pointer) is native { * }
 
+#| Decode a NUL-terminated UTF-8 C string produced by a cmark renderer into a
+#| Raku Str, then free the underlying buffer. The nativecast copies the bytes,
+#| so the Str fully owns its data before the buffer is released. Returns '' for
+#| a NULL pointer (cmark yields NULL on render failure).
+sub cstr-to-str-free(Pointer[uint8] $p --> Str) is export {
+    return '' unless $p.defined;
+    my $str = nativecast(Str, $p);
+    free($p);
+    $str;
+}
 
 #________________________________________________Classes__________________________________________________________#
 class Node is repr('CPointer') {
@@ -39,19 +52,19 @@ class Node is repr('CPointer') {
         return cmark_node_last_child( self );
     }
     multi method render($options = 0,:$html!) {
-        cmark_render_html(self,$options);
+        cstr-to-str-free(cmark_render_html(self,$options));
     }
     multi method render($options = 0,:$xml!) {
-        cmark_render_xml(self,$options);
+        cstr-to-str-free(cmark_render_xml(self,$options));
     }
     multi method render($options = 0 ,$width = 0,:$latex!) {
-        cmark_render_latex(self,$options,$width);
+        cstr-to-str-free(cmark_render_latex(self,$options,$width));
     }
     multi method render($options = 0 ,$width = 0,:$commonmark!) {
-        cmark_render_commonmark(self,$options,$width);
+        cstr-to-str-free(cmark_render_commonmark(self,$options,$width));
     }
     multi method render($options = 0 ,$width = 0,:$man!) {
-        cmark_render_man(self,$options,$width);
+        cstr-to-str-free(cmark_render_man(self,$options,$width));
     }
 }
 #| A class represents `cmark_parser`, i think
@@ -299,23 +312,23 @@ sub cmark_node_get_end_column(  Node ) returns int32 is native('cmark') is expor
 #________________________________________________Rendering__________________________________________________________#
 #| Render the Node to XML
 #| | `char *cmark_render_xml(cmark_node *root, int options);`
-sub cmark_render_xml( Node, int32 ) returns Str is encoded('utf8') is native('cmark') is export { * }
+sub cmark_render_xml( Node, int32 ) returns Pointer[uint8] is native('cmark') is export { * }
 
 #| Render the Node to HTML
 #| | `char *cmark_render_html(cmark_node *root, int options);`
-sub cmark_render_html( Node, int32 ) returns Str is encoded('utf8') is native('cmark') is export { * }
+sub cmark_render_html( Node, int32 ) returns Pointer[uint8] is native('cmark') is export { * }
 
 #| Render the Node to man
 #| | `char *cmark_render_man(cmark_node *root, int options, int width);`
-sub cmark_render_man( Node, int32, int32 ) returns Str is encoded('utf8') is native('cmark') is export { * }
+sub cmark_render_man( Node, int32, int32 ) returns Pointer[uint8] is native('cmark') is export { * }
 
 #| Render the Node to CommonMark
 #| | `char *cmark_render_commonmark(cmark_node *root, int options, int width);`
-sub cmark_render_commonmark( Node, int32, int32 ) returns Str is encoded('utf8') is native('cmark') is export { * }
+sub cmark_render_commonmark( Node, int32, int32 ) returns Pointer[uint8] is native('cmark') is export { * }
 
 #| Render the Node to latex
 #| | `char *cmark_render_latex(cmark_node *root, int options, int width);`
-sub cmark_render_latex( Node, int32, int32 ) returns Str is encoded('utf8') is native('cmark') is export { * }
+sub cmark_render_latex( Node, int32, int32 ) returns Pointer[uint8] is native('cmark') is export { * }
 
 #________________________________________________Version-information__________________________________________________________#
 #| The library version as integer for runtime checks
