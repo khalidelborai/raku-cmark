@@ -40,6 +40,12 @@ multi method parse(Cmark:D: $md, $options = CMARK_OPT_DEFAULT) {
     self;
 }
 
+#| One-shot Markdown → HTML without building a reusable document. Equivalent to
+#| Cmark.parse($md, $options).to-html but cheaper when you only need the HTML once.
+method markdown-to-html(Cmark:U: Str $md, $options = CMARK_OPT_DEFAULT --> Str) {
+    cstr-to-str-free(cmark_markdown_to_html($md, $md.encode('utf-8').bytes, $options));
+}
+
 method to-html($options = $!options) {
     die X::Cmark::NoNode.new without $!node;
     cstr-to-str-free(cmark_render_html($!node,$options));

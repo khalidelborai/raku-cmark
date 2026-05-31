@@ -442,6 +442,11 @@ sub cmark_parser_finish( Parser ) returns Node is native('cmark') is export { * 
 
 
 sub cmark_parse_document(Str is encoded('utf8'), size_t, int32) returns Node is native('cmark') is export { * }
+
+#| Convert 'text' (assumed UTF-8) directly to an HTML string. Returns a caller-
+#| owned malloc'd char* — route it through cstr-to-str-free, as the render subs do.
+#| | `char *cmark_markdown_to_html(const char *text, size_t len, int options)`
+sub cmark_markdown_to_html(Str is encoded('utf8'), size_t, int32) returns Pointer[uint8] is native('cmark') is export { * }
 #________________________________________________Tree-Manipulation__________________________________________________________#
 
 #| Unlinks a 'node', removing it from the tree, but not freeing its memory. (Use 'cmark_node_free' for that.)
