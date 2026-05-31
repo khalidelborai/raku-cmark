@@ -73,6 +73,16 @@ enum EventType is export (
     CMARK_EVENT_EXIT  => 3,
 );
 
+#| The node types that cannot contain children — cmark's cmark_node_is_leaf set,
+#| reproduced in pure Raku. is-block/is-inline/is-leaf are computed from the node
+#| type rather than bound natively, because cmark_node_is_block/inline/leaf only
+#| exist in cmark >= 0.31 and would fail to load on older system libcmark.
+my constant LEAF-TYPES = Set.new(
+    CMARK_NODE_CODE_BLOCK.Int, CMARK_NODE_THEMATIC_BREAK.Int, CMARK_NODE_TEXT.Int,
+    CMARK_NODE_SOFTBREAK.Int, CMARK_NODE_LINEBREAK.Int, CMARK_NODE_CODE.Int,
+    CMARK_NODE_HTML_INLINE.Int,
+);
+
 class Node is repr('CPointer') is export {
 
     multi method text {
@@ -100,15 +110,15 @@ class Node is repr('CPointer') is export {
     }
     method is-block {
         die X::Cmark::NoNode.new without self;
-        cmark_node_is_block(self);
+        CMARK_NODE_DOCUMENT.Int <= cmark_node_get_type(self) <= CMARK_NODE_THEMATIC_BREAK.Int;
     }
     method is-inline {
         die X::Cmark::NoNode.new without self;
-        cmark_node_is_inline(self);
+        CMARK_NODE_TEXT.Int <= cmark_node_get_type(self) <= CMARK_NODE_IMAGE.Int;
     }
     method is-leaf {
         die X::Cmark::NoNode.new without self;
-        cmark_node_is_leaf(self);
+        LEAF-TYPES{ cmark_node_get_type(self) }.so;
     }
 
     method next {
@@ -277,17 +287,9 @@ sub cmark_node_get_type(  Node ) returns int32 is native('cmark') is export { * 
 #| | `const char * cmark_node_get_type_string(cmark_node *node)`
 sub cmark_node_get_type_string(  Node ) returns Str is encoded('utf8') is native('cmark') is export { * }
 
-#| Returns 1 if the node is a block-level element, 0 otherwise.
-#| | `bool cmark_node_is_block(cmark_node *node)`
-sub cmark_node_is_block( Node ) returns bool is native('cmark') is export { * }
-
-#| Returns 1 if the node is an inline element, 0 otherwise.
-#| | `bool cmark_node_is_inline(cmark_node *node)`
-sub cmark_node_is_inline( Node ) returns bool is native('cmark') is export { * }
-
-#| Returns 1 if the node is a leaf (cannot contain children), 0 otherwise.
-#| | `bool cmark_node_is_leaf(cmark_node *node)`
-sub cmark_node_is_leaf( Node ) returns bool is native('cmark') is export { * }
+# Note: cmark_node_is_block/is_inline/is_leaf are intentionally NOT bound — they
+# only exist in cmark >= 0.31, so binding them breaks on older system libcmark.
+# Node.is-block/is-inline/is-leaf compute the same answer from the node type.
 
 #| Returns the string contents of 'node', or an empty string if none is set. Returns NULL if called on a node that does not have string content.
 #| | `const char * cmark_node_get_literal(cmark_node *node)`
