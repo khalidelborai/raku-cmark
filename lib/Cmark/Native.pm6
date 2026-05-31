@@ -73,7 +73,7 @@ enum EventType is export (
     CMARK_EVENT_EXIT  => 3,
 );
 
-class Node is repr('CPointer') {
+class Node is repr('CPointer') is export {
 
     multi method text {
         cmark_node_get_literal(self) // '';
@@ -147,31 +147,34 @@ class Node is repr('CPointer') {
         cstr-to-str-free(cmark_render_man(self,$options,$width));
     }
 }
-#| A class represents `cmark_parser`, i think
-class Parser is repr('CPointer') {
-    submethod BUILD(:$options) {
+#| Wraps a `cmark_parser` for streaming/incremental parsing. A CPointer instance
+#| cannot be produced by the default `new` (which blesses an empty pointer), so
+#| `new` is overridden to return the pointer from cmark_parser_new directly.
+class Parser is repr('CPointer') is export {
+    #| Create a parser with the given option bitflags.
+    method new(Parser:U: Int $options = 0 --> Parser) {
         cmark_parser_new($options);
     }
-    multi method new($options) {
-        self.bless(:$options);
-    }
 
-    #| Send a string to the parser
+    #| Feed a chunk of (UTF-8) Markdown to the parser.
     method feed(Str $buff) {
-        my $len = $buff.encode.bytes;
-        cmark_parser_feed(self,$buff,$len);
+        cmark_parser_feed(self, $buff, $buff.encode('utf-8').bytes);
     }
 
-    #| Finish Parsing
-    method finish {
-       return cmark_parser_finish(self);
+    #| Finish parsing and return the document tree. Ownership of the returned
+    #| node transfers to the caller — free it with cmark_node_free. The parser
+    #| no longer owns it, so this Parser's DESTROY (cmark_parser_free) is safe.
+    method finish(--> Node) {
+        cmark_parser_finish(self);
     }
 
-    method parse($md) {
+    #| Feed a whole string and finish, returning the document tree.
+    method parse(Str $md --> Node) {
         self.feed($md);
         self.finish;
     }
-    method DESTROY {
+
+    submethod DESTROY {
         cmark_parser_free(self);
     }
 }
@@ -426,7 +429,7 @@ sub cmark_version_string(--> Str) is native('cmark') is export { * }
 
 #| Creates a new parser object.
 #| | `cmark_parser * cmark_parser_new(int options)`
-sub cmark_parser_new( int32 ) returns Pointer is native('cmark') is export { * }
+sub cmark_parser_new( int32 ) returns Parser is native('cmark') is export { * }
 
 #| Frees memory allocated for a parser object.
 #| | `void cmark_parser_free(cmark_parser *parser)`
